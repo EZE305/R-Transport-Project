@@ -1,0 +1,224 @@
+---
+title: "passengerTransportProject"
+author: "Emmanuel Duarte"
+date: "2022-12-19"
+output: pdf_document
+---
+
+```{r}
+#install.packages("tidyverse")
+#library("tidyverse")
+
+
+#transport1 <- read.csv("transported_r_problem_test1.csv")
+#transport1 
+
+transport2 <- read.csv("transported_r_problem_test2.csv")
+#transport2
+
+transported_question <- read.csv("wereTheyTransported.csv")
+#transported
+```
+
+```{r}
+#As I'm looking through the data to compare the people transported to those that weren't I noticed a tremendous, difference in the amount of people transported that were vips and those that weren't. Out of all of the people transported (~8,200) that were visible on this file only 73 of them were VIP's, everyone else was not. 
+
+ifVIP <- filter(transport2)
+
+transport_true <- filter(transport2, Transported == "True", VIP=="True")
+#View(transport_true)
+
+transport_true <- filter(transport2, Transported == "True")
+#View(transport_true)
+
+transport2_filtered <- transport2 %>%
+  filter(VIP %in% c("True", "False"))
+
+transport2_VIPlot <- transport2 %>%
+  group_by(VIP) %>%
+  summarize(count = n())
+
+transport2_filtered <- transport2_filtered %>%
+  group_by(VIP) %>%
+  summarize(count = n()) #%>%
+  #mutate(prop = count / sum(count))
+
+#View(transport2_filtered)
+
+#ggplot(transport2_filtered, aes(x = VIP, y = count, fill = VIP)) +
+  #geom_bar(stat = "identity") +
+  #labs(title = "VIP Transport", x = "VIP", y = "Count")
+
+ggplot(transport2_VIPlot, aes(x = VIP, y = count, fill = VIP)) +
+  geom_bar(stat = "identity") +
+  labs(title = "VIP's", x = "VIP", y = "Count")
+
+
+#Thinking on this further, I realized that the proportion of VIP's to non-VIP's that were transported and those that weren't was not correlated. There was the same proportion of VIP's to non-VIP's regardless of whether they were transported. 
+
+```
+
+```{r}
+transport2 <- read.csv("transported_r_problem_test2.csv")
+transport2
+```
+
+```{r}
+#Would like to sort by home planet to see if there's a correlation between that and them being transported. 
+
+home_planet_transport <- transport2 %>%
+  group_by(HomePlanet) %>%
+  summarize(count = n())
+
+
+ggplot(home_planet_transport, aes(x = HomePlanet, y = count, fill = HomePlanet)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Home Planet", x = "Planet", y = "Count")
+
+#As expected most of the passengers were from Earth, but there were a surprising amount of people from Europa, compared to Mars and it's closeness to Earth. 
+#In my graph an extra bar showed up with no information. I went through a process of trying to remove it. 
+
+home_planet_transport <- transport2 %>%
+  group_by(HomePlanet) %>%
+  summarize(count = n()) %>%
+  mutate(levels = factor(HomePlanet, levels = levels(HomePlanet))) %>%
+  filter(!is.na(levels))
+
+home_planet_transport
+
+
+#This didn't help so I just filtered the data to allow only the known planets to show in the graph. 
+
+onlyPlanets <- transport2 %>%
+  filter(HomePlanet %in% c("Earth", "Mars", "Europa"))
+
+home_planet_transport <- onlyPlanets %>%
+  group_by(HomePlanet) %>%
+  summarize(count = n())
+
+
+ggplot(home_planet_transport, aes(x = HomePlanet, y = count, fill = HomePlanet)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Home Planet", x = "Planet", y = "Count")
+
+
+#Now I would like to see what proportion of people from the different planets were transported. 
+
+transport_byPlanet <- onlyPlanets %>%
+  group_by(HomePlanet, Transported) %>%
+  summarize(count = n())
+
+ggplot(transport_byPlanet, aes(x = HomePlanet, y = count, fill = Transported)) +
+  geom_bar(stat = "identity", position = "fill") +
+  labs(title = "Proportion of Transported Clients by Home Planet", x = "Home Planet", y = "Proportion")
+
+#With this visualization we can easily tell that there were proportionally more people from Europa that were transported compared to the other two planets, although earth had more people overall that were transported. 
+
+```
+
+## 
+
+arrange(CabinLetter)
+
+```{r}
+#Assuming that all the different cabin groups are in different parts of the ship I will try and split them up by the first letter in their cabin number after removing the non existent values. Then compare them to if they were transported or not. 
+transport2 <- read.csv("transported_r_problem_test2.csv")
+
+
+cabinFilter <- transport2 %>%
+  separate(Cabin, into = c("CabinLetter", "CabinNumber", "CabinType"), sep = "/", fill = "right")
+
+cabinLocation <- cabinFilter %>%
+  filter(!is.na(CabinLetter))
+
+cabinLocation <- cabinFilter %>%
+  arrange(CabinLetter)
+
+cabinLocation
+
+#I was able to filter and separate the values in the cabin column to have all of NA values removed and I will try to associate the cabin Letter (which I am assuming corresponds to a certain part of the ship) with if the person was Transported or not. 
+
+ggplot(cabinLocation, aes(x = Transported, fill = Transported)) +
+  geom_bar() +
+  facet_wrap(~ CabinLetter)
+#Using the Facet wrap function I was able to show the count of how many people were transported according to the Cabin that they were in. Unfortunately there wasn't any clear indication that the cabin had any bearing on wether someone was transported. 
+```
+
+```{r}
+#I'll be checking the passangers cryo sleep status and seeing if that had anything to do with them being transported. 
+
+cryo_transport <- transport2 %>%
+  group_by(CryoSleep) %>%
+  summarize(count = n())
+
+transP <- transport2 %>%
+  group_by(Transported) %>%
+  summarize(count = n())
+  
+transP
+cryo_transport
+
+cryo_transport_true <- transport2 %>%
+  filter(CryoSleep == "True", Transported == "True")
+
+cryo_transport_true_count <- cryo_transport_true %>%
+  summarize(count = n())
+
+ggplot(cryo_transport_true_count, aes(x = "CryoSleep and Transported", y = count, fill = "CryoSleep and Transported")) +
+  geom_col() +
+  labs(title = "CryoSleep and Transported", x = "CryoSleep and Transported", y = "Count")
+
+cryo_transport_false <- transport2 %>%
+  filter(CryoSleep == "True", Transported == "False")
+
+cryo_transport_false_count <- cryo_transport_false %>%
+  summarize(count = n())
+
+ggplot(cryo_transport_false_count, aes(x = "In CryoSleep and Not transported", y = count, fill = "In CryoSleep and Not Transported")) +
+  geom_col() +
+  labs(title = "In CryoSleep and  Not Transported", x = "In CryoSleep and Not Transported", y = "Count")
+
+
+#After getting the individual counts for if someone was in cryosleep or not and if they were transported or not, I wanted to see the count for the people that were in cryo that were transported and the count for the ones that were in cryo and not transported. After finding those numbers I wanted to put the graphs together to see if they have a correlation. 
+
+compare_plot <- ggplot() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  labs(title = "Comparing if in CryoSleep and Transported", x = "", y = "Count")
+
+compare_plot <- compare_plot +
+  geom_col(data = cryo_transport_true_count, aes(x = "CryoSleep and Transported", y = count, fill = "CryoSleep and Transported"))
+
+compare_plot <- compare_plot +
+  geom_col(data = cryo_transport_false_count, aes(x = "CryoSleep and Not Transported", y = count, fill = "CryoSleep and Not Transported"))
+
+compare_plot
+
+#There seems to be a bit of a correlation so I'll do the same but with people not in cryosleep. 
+
+
+no_cryo_transport_true <- transport2 %>%
+  filter(CryoSleep == "False", Transported == "True")
+
+no_cryo_transport_true_count <- no_cryo_transport_true %>%
+  summarize(count = n())
+
+no_cryo_transport_false <- transport2 %>%
+  filter(CryoSleep == "False", Transported == "False")
+
+no_cryo_transport_false_count <- no_cryo_transport_false %>%
+  summarize(count = n())
+
+compare_plot2 <- ggplot() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  labs(title = "Comparing if NOT in CryoSleep and If Transported", x = "", y = "Count")
+
+compare_plot2 <- compare_plot2 +
+  geom_col(data = no_cryo_transport_true_count, aes(x = "No CryoSleep and Transported", y = count, fill = "CryoSleep and Transported"))
+
+compare_plot2 <- compare_plot2 +
+  geom_col(data = no_cryo_transport_false_count, aes(x = "No CryoSleep and Not Transported", y = count, fill = "No CryoSleep and Transported"))
+
+compare_plot2
+
+#The proportion of people in Cryosleep vs not is almost a 2:1 (1.79:1), the proportion of people that were trasnsported vs. not is alomost exactly a 1:1. Yet the proportion of people that were in cryosleep and transported or not is a little over a 5:1 ratio leaning towards a notion that the people in cryosleep had a significantly higher chance of being transported than people not in Cryosleep. 
+```
